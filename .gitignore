@@ -1,0 +1,7 @@
+**/bin
+**/obj
+**/appsettings.json
+**/appsettings.Development.json
+**/.svelte-kit
+**/node_modules
+**/package-lock.json
