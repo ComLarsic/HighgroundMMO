@@ -13,7 +13,7 @@ using Microsoft.Extensions.Hosting;
 /// This runs in the background and listens for messages from the socket.
 /// Runs at a time interval to check for new messages.
 /// </summary>
-public class SocketService(ISessionManager socketManager, IEnumerable<IMessageHandler> messageHandlers) : BackgroundService
+public class SocketService(ISessionManager sessionManager, IEnumerable<IMessageHandler> messageHandlers) : BackgroundService
 {
     /// <summary>
     /// The buffer size for the socket.
@@ -36,18 +36,17 @@ public class SocketService(ISessionManager socketManager, IEnumerable<IMessageHa
         using var timer = new PeriodicTimer(Interval);
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            var unhandledSessions = socketManager.UnhandledSessions.ToList();
+            var unhandledSessions = sessionManager.UnhandledSessions.ToList();
             foreach (var session in unhandledSessions)
             {
                 var thread = new Task(async () => await Receive(session), stoppingToken);
                 SessionThreads.Add(session.Id, thread);
                 thread.Start();
-                socketManager.HandledSessions.Add(session);
-                socketManager.UnhandledSessions.Remove(session);
+                sessionManager.HandledSessions.Add(session);
+                sessionManager.UnhandledSessions.Remove(session);
             }
 
         }
-        Console.WriteLine("Socket service stopped");
     }
 
     /// <summary>
@@ -67,7 +66,7 @@ public class SocketService(ISessionManager socketManager, IEnumerable<IMessageHa
                 // If the message is a close message, disconnect the session
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await socketManager.Disconnect(session.Id);
+                    await sessionManager.Disconnect(session.Id);
                     return;
                 }
 
@@ -79,12 +78,12 @@ public class SocketService(ISessionManager socketManager, IEnumerable<IMessageHa
             catch
             {
                 // If the session is closed, remove it from the session list and disconnect it.
-                await socketManager.Disconnect(session.Id);
+                await sessionManager.Disconnect(session.Id);
             }
         }
 
         // If the session is closed, remove it from the session list and disconnect it.
-        await socketManager.Disconnect(session.Id);
+        await sessionManager.Disconnect(session.Id);
     }
 
     /// <summary>

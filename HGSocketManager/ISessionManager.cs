@@ -21,6 +21,11 @@ public interface ISessionManager
     public List<Session> UnhandledSessions { get; }
 
     /// <summary>
+    /// Keeps track of sessions that have been removed.
+    /// </summary>
+    public List<Session> RemovedSessions { get; }
+
+    /// <summary>
     /// Connect a websocket.
     /// </summary>
     /// <param name="webSocket"></param>
@@ -64,5 +69,13 @@ public interface ISessionManager
     /// <param name="message"></param>
     /// <returns></returns>
     public Task SendMessageToRoomAsync(Guid roomId, string type, string message);
+
+    /// <summary>
+    /// Send a message to a player.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="message"></param>
+    /// <returns></returns>
+    public Task SendMessageToPlayerAsync(Guid playerId, string type, string message);
 }
 

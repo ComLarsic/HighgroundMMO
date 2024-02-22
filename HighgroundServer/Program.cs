@@ -3,6 +3,7 @@ using HGPlayers;
 using HighgroundRooms;
 using HGSocketManager;
 using HGChat;
+using HGWorld;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
@@ -54,6 +55,8 @@ builder.Services.AddSingleton<IRoomManager, RoomManager>(o =>
     return roomManager;
 });
 builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddSingleton<IWorldManager, WorldManager>();
+builder.Services.AddHostedService<GameWorldService>();
 
 // Add the message handlers
 AddMessageHandlers(builder.Services);

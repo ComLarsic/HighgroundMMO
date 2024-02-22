@@ -12,6 +12,22 @@ export class Gfx {
   /// The screen space projection matrix.
   private static _screenSpaceMatrix: Float32Array = new Float32Array(16);
 
+  /// The width of the canvas.
+  public static get width(): number {
+    if (!this._canvas) {
+      throw new Error("Canvas is not initialized.");
+    }
+    return this._canvas.width;
+  }
+
+  /// The height of the canvas.
+  public static get height(): number {
+    if (!this._canvas) {
+      throw new Error("Canvas is not initialized.");
+    }
+    return this._canvas.height;
+  }
+
   /// The canvas element.
   public static init(canvas: HTMLCanvasElement): void {
     this._canvas = canvas;
@@ -76,44 +92,5 @@ export class Gfx {
     const gl = Gfx.gl;
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-  }
-
-  /**
-   * Load a texture.
-   * @param url The URL of the texture to load.
-   * @returns The texture.
-   * @throws An error if the texture could not be loaded.
-   */
-  public static async loadTexture(url: string): Promise<WebGLTexture> {
-    const gl = Gfx.gl;
-    const texture = gl.createTexture();
-    if (!texture) {
-      throw new Error("Failed to create texture.");
-    }
-
-    const image = new Image();
-    image.src = url;
-
-    return new Promise((resolve, reject) => {
-      image.onload = () => {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          image
-        );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        resolve(texture);
-      };
-      image.onerror = (event) => {
-        reject("Failed to load image.");
-      };
-    });
   }
 }

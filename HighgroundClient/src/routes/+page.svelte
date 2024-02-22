@@ -33,9 +33,18 @@
   /// Keep track of the game canvas
   let gameCanvas: GameCanvas;
 
+  /// An error message to display
+  let errorMessage: string | undefined = undefined;
+
+  /// Check if the room is full
+  function isRoomFull(room: Room): boolean {
+    return room.players.length >= room.capacity;
+  }
+
   /// Connect to the server
   async function connect(): Promise<void> {
     isJoining = true;
+    errorMessage = undefined;
     localStorage.setItem("connectionForm", JSON.stringify(connectionForm));
     await SocketConnection.connect(connectionForm.host)
       .then(async () => {
@@ -76,10 +85,19 @@
     isConnected = false;
     isJoined = false;
     rooms = [];
+    errorMessage = "Server disconnected";
+  }
+
+  /// Handle the error event
+  function onError(message: any) {
+    errorMessage = message.error;
+    isJoining = false;
   }
 
   // Add the disconnect event listener
   SocketConnection.onClose(onDisconnect);
+  // Add the error event listener
+  SocketConnection.onError(onError);
 
   // Add the event listeners
   SocketConnection.on("join-response", onJoin);
@@ -110,63 +128,91 @@
 </script>
 
 {#if isloaded}
-  {#if isJoined}
-    <div class="game-view">
-      <div class="canvas-view">
-        <GameCanvas bind:this={gameCanvas} />
-      </div>
+  <div class="game-view">
+    <div class="canvas-view">
+      <GameCanvas bind:this={gameCanvas} />
+    </div>
+
+    {#if isJoined}
       <Chat />
-    </div>
-  {:else}
-    <div class="menu">
-      <h1>Highground Client</h1>
-      <form>
-        <div class="form-item">
-          <label for="host">Host</label>
-          <input id="host" bind:value={connectionForm.host} />
-          {#if isConnected}
-            <button
-              disabled={isJoining}
-              on:click={async () => await disconnect()}>Disconnect</button
-            >
-          {:else}
-            <button disabled={isJoining} on:click={async () => await connect()}
-              >Connect</button
-            >
-          {/if}
-          <div
-            id="indicator"
-            class={isConnected ? "connected" : "disconnected"}
-          ></div>
-        </div>
-        <div class="form-item">
-          <label for="username">Username</label>
-          <input id="username" bind:value={connectionForm.username} />
-        </div>
-      </form>
-      <h2>Rooms</h2>
-      <ul>
-        {#each rooms as room}
-          <li>
-            <b>{room.name}:</b>{room.players.length}/{room.capacity}
-            {#if room.players.length >= room.capacity}
-              <b>Full</b>
+    {:else}
+      <div class="menu">
+        <h1>Highground Client</h1>
+        {#if errorMessage}
+          <p class="error-message">{errorMessage}</p>
+        {/if}
+
+        <form>
+          <div class="form-item">
+            <label for="host">Host</label>
+            <input id="host" bind:value={connectionForm.host} />
+            {#if isConnected}
+              <button
+                disabled={isJoining}
+                on:click={async () => await disconnect()}>Disconnect</button
+              >
             {:else}
-              <button on:click={async () => await joinRoom(room)}>Join</button>
+              <button
+                disabled={isJoining}
+                on:click={async () => await connect()}>Connect</button
+              >
             {/if}
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
+          </div>
+          <div class="form-item">
+            <label for="username">Username</label>
+            <input id="username" bind:value={connectionForm.username} />
+          </div>
+        </form>
+        <h2>Rooms</h2>
+        <ul>
+          {#each rooms as room}
+            <li>
+              <span class={"room-name " + isRoomFull(room) ? "full" : ""}>
+                <span>{room.name} </span>
+              </span>
+              {#if isRoomFull(room)}
+                <b>Full</b>
+              {:else}
+                <span class="room-players"
+                  >{room.players.length}/{room.capacity}
+                  <button on:click={async () => await joinRoom(room)}
+                    >Join</button
+                  >
+                </span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+  </div>
 {/if}
 
 <style lang="scss">
   .menu {
+    position: absolute;
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 100vh;
+
+    // Display the menu in the center of the screen, pivoting from the center
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 25%;
+
+    color: white;
+    font-family: "ADDSBP";
+
+    z-index: 100;
+
+    background-color: transparent;
+    padding: 1rem;
+
+    .error-message {
+      color: red;
+    }
 
     form {
       display: flex;
@@ -175,6 +221,10 @@
       justify-content: center;
       gap: 1rem;
       width: fit-content;
+
+      h1 {
+        margin: 0;
+      }
     }
 
     .form-item {
@@ -184,19 +234,8 @@
       gap: 0.5rem;
 
       label {
-        width: 5rem;
-      }
-
-      input {
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid #000;
-      }
-
-      button {
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid #000;
+        color: white;
+        left: 0;
       }
     }
 
@@ -204,45 +243,55 @@
       list-style: none;
       padding: 0;
       margin: 0;
+      width: 100%;
     }
 
     li {
-      margin: 0.5rem 0;
-
-      b {
-        margin-right: 0.5rem;
-      }
-
-      button {
-        margin-left: 0.5rem;
-        align-self: right;
-      }
-    }
-
-    #indicator {
-      width: 1rem;
-      height: 1rem;
-      border-radius: 50%;
-      margin-right: 0.5rem;
-
-      &.connected {
-        background-color: green;
-      }
-
-      &.disconnected {
-        background-color: red;
-      }
-    }
-  }
-  .game-view {
-    .canva-menu {
-      position: absolute;
       display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      top: 0;
-      right: 0;
-      z-index: 100;
+      flex-direction: row;
+      margin: 0.5rem 0;
+      align-items: center;
+
+      .room-name {
+        margin-right: 0.5rem;
+        // Make the text left-aligned
+        text-align: left;
+        padding: 0.5rem;
+
+        &.full {
+          color: red;
+        }
+      }
+
+      .room-players {
+        margin-left: 0.5rem;
+        // Align the button to the right
+        margin-left: auto;
+      }
+    }
+
+    input {
+      padding: 0.5rem;
+      border-radius: 0;
+      color: #fff;
+      font-family: "ADDSBP";
+      border: 3px solid #fff;
+      background-color: transparent;
+      // Make the input fill the width of the form
+      width: 100%;
+    }
+
+    button {
+      padding: 0.5rem;
+      border-radius: 0;
+      border: 3px solid #fff;
+      background-color: transparent;
+      color: white;
+      font-family: "ADDSBP";
+
+      &:disabled {
+        opacity: 0.5;
+      }
     }
   }
 </style>

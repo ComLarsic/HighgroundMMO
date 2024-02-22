@@ -1,5 +1,6 @@
 import { Gfx } from "./gfx";
 import type { Shader } from "./shaders";
+import { Texture } from "./texture";
 
 /**
  * Represents the dimensions of a sprite.
@@ -16,7 +17,7 @@ export type SpriteBounds = {
  */
 export class Sprite {
   /// The sprite texture
-  private _texture: WebGLTexture;
+  private _texture: Texture;
   /// The sprite shader
   private _shader: Shader | null = null;
 
@@ -28,7 +29,15 @@ export class Sprite {
   private _indexBuffer: WebGLBuffer;
 
   /// The sprite bounds. Cached for performance.
-  private _bounds: SpriteBounds = {
+  private _destBounds: SpriteBounds = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  };
+
+  /// The source bounds of the sprite.
+  private _sourceBounds: SpriteBounds = {
     x: 0,
     y: 0,
     width: 0,
@@ -58,11 +67,18 @@ export class Sprite {
   }
 
   /**
+   * Get the sprite texture.
+   */
+  public get texture(): Texture {
+    return this._texture;
+  }
+
+  /**
    * Create a new sprite.
    * @param texture The sprite texture.
    * @param shader The sprite shader.
    */
-  constructor(shader: Shader, texture: WebGLTexture) {
+  constructor(shader: Shader, texture: Texture) {
     this._texture = texture;
     this._shader = shader;
 
@@ -92,24 +108,42 @@ export class Sprite {
    * Load a sprite from a file.
    */
   public static async load(shader: Shader, url: string): Promise<Sprite> {
-    const texture = await Gfx.loadTexture(url);
+    const texture = await Texture.load(url);
     return new Sprite(shader, texture);
   }
 
   /**
-   * Draw the sprite.
+   * Draw the sprite at the given position.
    */
-  public draw(bounds: SpriteBounds): void {
+  public draw(x: number, y: number, width: number, height: number): void {
+    this.drawBounded(
+      { x: 0, y: 0, width: this._texture.width, height: this._texture.height },
+      { x, y, width, height }
+    );
+  }
+
+  /**
+   * Draw the sprite with the given bounds.
+   */
+  public drawBounded(source: SpriteBounds, dest: SpriteBounds): void {
     const gl = Gfx.gl;
+
+    /// Compare two sprite bounds.
+    const compareBounds = (a: SpriteBounds, b: SpriteBounds): boolean => {
+      return (
+        a.x === b.x &&
+        a.y === b.y &&
+        a.width === b.width &&
+        a.height === b.height
+      );
+    };
 
     // Set the sprite bounds. This is cached for performance.
     if (
-      bounds.x !== this._bounds.x ||
-      bounds.y !== this._bounds.y ||
-      bounds.width !== this._bounds.width ||
-      bounds.height !== this._bounds.height
+      !compareBounds(this._destBounds, dest) ||
+      !compareBounds(this._sourceBounds, source)
     ) {
-      this.setBounds(bounds);
+      this.setBounds(dest, source);
     }
 
     if (this._shader === null) {
@@ -130,7 +164,7 @@ export class Sprite {
     // Bind the texture.
     if (this._texture !== null) {
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this._texture);
+      gl.bindTexture(gl.TEXTURE_2D, this._texture.texture);
       this._shader.setUniform("texture", "1i", 0);
     }
 
@@ -143,40 +177,78 @@ export class Sprite {
 
   /**
    * Set the sprite bounds.
-   * @param bounds The sprite bounds.
+   * @param dest The sprite destination bounds.
+   * @param source The sprite source bounds.
    */
-  private setBounds(bounds: SpriteBounds): void {
-    this._bounds = bounds;
+  private setBounds(dest: SpriteBounds, source: SpriteBounds): void {
+    this._destBounds = dest;
+    this._sourceBounds = source;
 
     const gl = Gfx.gl;
 
+    // Destroy the vertex array if it exists.
+    if (gl.isVertexArray(this._vertexArray)) {
+      gl.deleteVertexArray(this._vertexArray);
+    }
+    if (gl.isBuffer(this._vertexBuffer)) {
+      gl.deleteBuffer(this._vertexBuffer);
+    }
+    if (gl.isBuffer(this._indexBuffer)) {
+      gl.deleteBuffer(this._indexBuffer);
+    }
+
+    // Create the vertex array.
+    const vertexArray = gl.createVertexArray();
+    if (vertexArray === null) {
+      throw new Error("Failed to create vertex array.");
+    }
+    this._vertexArray = vertexArray;
+
+    // Create the vertex buffer.
+    const vertexBuffer = gl.createBuffer();
+    if (vertexBuffer === null) {
+      throw new Error("Failed to create vertex buffer.");
+    }
+    this._vertexBuffer = vertexBuffer;
+
+    // Create the index buffer.
+    const indexBuffer = gl.createBuffer();
+    if (indexBuffer === null) {
+      throw new Error("Failed to create index buffer.");
+    }
+    this._indexBuffer = indexBuffer;
+
     // Create the vertices.
     // Vec3 position, Vec2 texCoord
+    const uv = {
+      x: source.x / this._texture.width || 0,
+      y: source.y / this._texture.height || 0,
+      width: source.width / this._texture.width || 0,
+      height: source.height / this._texture.height || 0,
+    };
+
+    // (Use standard UV for now)
     const vertices = new Float32Array([
-      // Top left
-      bounds.x,
-      bounds.y + bounds.height,
+      dest.x,
+      dest.y,
       0.0,
+      uv.x,
+      uv.y,
+      dest.x + dest.width,
+      dest.y,
       0.0,
-      1.0,
-      // Bottom left
-      bounds.x,
-      bounds.y,
+      uv.x + uv.width,
+      uv.y,
+      dest.x + dest.width,
+      dest.y + dest.height,
       0.0,
+      uv.x + uv.width,
+      uv.y + uv.height,
+      dest.x,
+      dest.y + dest.height,
       0.0,
-      0.0,
-      // Bottom right
-      bounds.x + bounds.width,
-      bounds.y,
-      0.0,
-      1.0,
-      0.0,
-      // Top right
-      bounds.x + bounds.width,
-      bounds.y + bounds.height,
-      0.0,
-      1.0,
-      1.0,
+      uv.x,
+      uv.y + uv.height,
     ]);
 
     // Create the indices.

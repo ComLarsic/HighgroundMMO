@@ -20,6 +20,10 @@ export class SocketConnection {
   /// Callbacks for when the connection is closed.
   private static _onCloseCallbacks: Array<() => void> = [];
 
+  /// Callbacks for when the connection fails.
+  private static _onErrorCallbacks: Array<(error: string | undefined) => void> =
+    [];
+
   /**
    * Get the socket connection.
    * @returns The WebSocket connection.
@@ -65,6 +69,9 @@ export class SocketConnection {
       };
       this._socket.onerror = (event) => {
         console.error("Error connecting to server.");
+        this._onErrorCallbacks.forEach((callback) =>
+          callback(JSON.stringify(event))
+        );
       };
       this._socket.onclose = (event) => {
         console.log("Connection to server closed.");
@@ -75,6 +82,7 @@ export class SocketConnection {
       this._socket.onmessage = (event) => {
         const message: Message = JSON.parse(event.data);
         const data: any = JSON.parse(message.content);
+        // console.log("Received message:", message.type, data);
         const handlers = this._messageHandlers.get(message.type);
         if (handlers) {
           handlers.forEach((handler) => handler(data));
@@ -141,5 +149,13 @@ export class SocketConnection {
    */
   public static onClose(callback: () => void): void {
     this._onCloseCallbacks.push(callback);
+  }
+
+  /**
+   * Adds a callback for when the connection fails.
+   * @param callback The callback to add.
+   */
+  public static onError(callback: (error: string | undefined) => void): void {
+    this._onErrorCallbacks.push(callback);
   }
 }

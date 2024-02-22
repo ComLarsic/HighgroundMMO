@@ -2,6 +2,8 @@
   import { Player } from "$lib/networking/player";
   import { SocketConnection } from "$lib/networking/socket_connection";
   import { onMount } from "svelte";
+  import addFont from "$lib/assets/fonts/ADDSBP__.ttf";
+  import { PlayerList } from "$lib/networking/player_list";
 
   /// The chat message type
   interface ChatMessage {
@@ -13,11 +15,12 @@
   }
 
   // Keep track of the chat visibility
-  let showChat = false;
+  let showChat = true;
 
   // Keep track of the chat messages
   let messages: ChatMessage[] = [];
   let messageInput: string = "";
+  let messageInputBox: HTMLInputElement;
 
   // The chat message box
   let messageBox: HTMLDivElement;
@@ -63,7 +66,7 @@
 
   // Scroll to the bottom of the chat, but only if the user is already at the bottom
   function scrollToBottom() {
-    if (messageBox === undefined) return;
+    if (!messageBox) return;
     if (
       messageBox.scrollTop + messageBox.clientHeight ===
       messageBox.scrollHeight
@@ -136,7 +139,11 @@
       {#each messages as message}
         {#if message.player}
           <p class="player-message">
-            <span class="player-name">[{message.player.username}]</span>:
+            <span
+              class={message.player.id == Player.id
+                ? "client-player"
+                : "non-client-player"}>[{message.player.username}]</span
+            >:
             <span class="message-content">{message.content}</span>
           </p>
         {:else}
@@ -148,7 +155,11 @@
       {/each}
     </div>
     <div class="message-input">
-      <input bind:value={messageInput} on:keypress={handleKeyPress} />
+      <input
+        bind:this={messageInputBox}
+        bind:value={messageInput}
+        on:keypress={handleKeyPress}
+      />
       <button on:click={sendMessage}>Send</button>
     </div>
   {/if}
@@ -159,11 +170,10 @@
     position: absolute;
     display: flex;
     flex-direction: column;
-    width: 256px;
-    max-height: 30%;
+    width: 15%;
+    height: 100%;
     top: 0;
     right: 0;
-    border: 1px solid white;
 
     // Display the chat box over the game canvas
     z-index: 100;
@@ -174,13 +184,21 @@
       height: 30%;
       padding: 0.5rem;
 
+      font-family: "ADDSBP";
+      border: 3px solid white;
+      background-color: #000a;
+
       p {
         margin: 0;
 
         &.player-message {
-          .player-name {
-            color: #00ff00;
+          .non-client-player {
+            color: #fff;
           }
+          .client-player {
+            color: #ffff00;
+          }
+          color: #bbb;
         }
 
         &.server-message {
@@ -191,20 +209,32 @@
 
     .message-input {
       display: flex;
+      background-color: #000a;
 
       input {
         background-color: transparent;
         color: white;
         flex: 1;
+        font-family: "ADDSBP";
+        border: 3px solid white;
+        min-width: 0;
+        widows: 100%;
+
+        &:focus {
+          outline: none;
+        }
       }
     }
 
     button {
       padding: 0.5rem;
       border-radius: 0;
-      border: 1px solid #fff;
+      border: 3px solid #fff;
       background-color: transparent;
       color: white;
+      background-color: #000a;
+
+      font-family: "ADDSBP";
     }
   }
 </style>

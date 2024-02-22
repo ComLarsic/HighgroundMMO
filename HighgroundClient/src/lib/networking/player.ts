@@ -1,10 +1,22 @@
 import { SocketConnection } from "./socket_connection";
 
 /// The player data.
-interface PlayerData {
+export interface PlayerData {
   id: string;
   username: string;
   room: string;
+}
+
+/// The player physics data
+export interface PlayerPhysicsData {
+  position: {
+    X: number;
+    Y: number;
+  };
+  velocity: {
+    X: number;
+    Y: number;
+  };
 }
 
 /**
@@ -13,6 +25,9 @@ interface PlayerData {
 export class Player {
   /// The player data
   private static _data: PlayerData | null = null;
+
+  /// The player physics data
+  private static _physicsData: PlayerPhysicsData | null = null;
 
   /**
    * Get the player's id.
@@ -82,6 +97,27 @@ export class Player {
    */
   public static get inRoom(): boolean {
     return this.room !== null;
+  }
+
+  /**
+   * Get the player's physics data.
+   * @returns The player's physics data.
+   */
+  public static get physicsData(): PlayerPhysicsData {
+    return (
+      this._physicsData ?? {
+        position: { X: 0, Y: 0 },
+        velocity: { X: 0, Y: 0 },
+      }
+    );
+  }
+
+  /**
+   * Set the player's physics data.
+   * @param data The player's physics data.
+   */
+  public static set physicsData(data: PlayerPhysicsData) {
+    this._physicsData = data;
   }
 }
 

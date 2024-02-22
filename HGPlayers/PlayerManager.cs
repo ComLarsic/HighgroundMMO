@@ -36,4 +36,6 @@ public class PlayerManager : IPlayerManager
 
     public Task<List<Player>> GetPlayersAsync()
         => Task.FromResult(Players);
+
+
 }

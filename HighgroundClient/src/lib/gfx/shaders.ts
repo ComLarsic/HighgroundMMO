@@ -103,6 +103,10 @@ export class Shader {
     if (this._uniforms[name] === undefined) {
       this._uniforms[name] = gl.getUniformLocation(this._program, name);
     }
+    // Check if the uniform location is valid.
+    if (this._uniforms[name] === null) {
+      console.warn("Uniform location is not found:", name);
+    }
     return this._uniforms[name];
   }
 

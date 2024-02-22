@@ -17,10 +17,57 @@ namespace HGSocketManager;
 public class SessionManager(IRoomManager roomManager, IPlayerManager playerManager) : ISessionManager
 {
     /// <inheritdoc />
-    public List<Session> HandledSessions { get; } = [];
+    public List<Session> HandledSessions { get => GetHandledSessions(); }
+
+    private List<Session> _handledSessions = [];
+    private readonly object _handledSessionsLock = new();
 
     /// </inheritdoc>
-    public List<Session> UnhandledSessions { get; } = [];
+    public List<Session> UnhandledSessions { get => GetUnhandledSessions(); }
+    private List<Session> _unhandledSessions = [];
+    private readonly object _unhandledSessionsLock = new();
+
+    /// <inheritdoc />
+    public List<Session> RemovedSessions { get => GetRemovedSessions(); }
+    private List<Session> _removedSessions = [];
+    private readonly object _removedSessionsLock = new();
+
+
+    /// <summary>
+    /// The getter for the handledSessions collection.
+    /// </summary>
+    /// <returns></returns>
+    private List<Session> GetHandledSessions()
+    {
+        lock (_handledSessionsLock)
+        {
+            return _handledSessions;
+        }
+    }
+
+    /// <summary>
+    /// The getter for the unhandledSessions collection.
+    /// </summary>
+    /// <returns></returns>
+    private List<Session> GetUnhandledSessions()
+    {
+        lock (_unhandledSessionsLock)
+        {
+            return _unhandledSessions;
+        }
+    }
+
+    /// <summary>
+    /// The getter for the removedSessions collection.
+    /// </summary>
+    /// <returns></returns>
+    private List<Session> GetRemovedSessions()
+    {
+        lock (_removedSessionsLock)
+        {
+            return _removedSessions;
+        }
+    }
 
     /// <inheritdoc />
     public Task<Guid> Connect(WebSocket webSocket, TaskCompletionSource<object> taskCompletionSource)
@@ -44,6 +91,16 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
         {
             var session = HandledSessions.First(s => s.Id == id);
 
+            // Close the socket.
+            if (session.Socket.State == WebSocketState.Open)
+                await session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the socket manager", CancellationToken.None);
+
+            // Remove the session from the list of handled sessions.
+            HandledSessions.Remove(session);
+
+            // Add the session to the list of removed sessions.
+            RemovedSessions.Add(session);
+
             // If a player is in a room, remove them from the room.
             if (session.PlayerId != null)
             {
@@ -59,12 +116,6 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
                 }
             }
 
-            // Close the socket.
-            if (session.Socket.State == WebSocketState.Open)
-                await session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the socket manager", CancellationToken.None);
-
-            // Remove the session from the list of handled sessions.
-            HandledSessions.Remove(session);
         }
         catch { }
     }
@@ -74,7 +125,10 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
     {
         try
         {
-            var session = HandledSessions.First(s => s.Id == id);
+            // Create a copy of the HandledSessions collection. This is because the collection may be modified while we are sending messages.
+            var sessionsCopy = new List<Session>(HandledSessions);
+
+            var session = sessionsCopy.First(s => s.Id == id);
             var buffer = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new Message
             {
                 MessageType = type,
@@ -85,6 +139,10 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
         catch (InvalidOperationException)
         {
             throw new SessionNotFoundException(id); // Again, Microsoft being extra.
+        }
+        catch
+        {
+            return Task.CompletedTask;
         }
     }
 
@@ -98,13 +156,32 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
     /// <inheritdoc />
     public Task SendMessageToRoomAsync(Guid roomId, string type, string message)
     {
-        var room = roomManager.GetRoomAsync(roomId).Result ?? throw new RoomNotFoundException(roomId);
-        var tasks = room.Players.Select(async player =>
+        try
         {
-            var session = await GetSessionByPlayerIdAsync(player) ?? throw new PlayerNotInSessionException(player);
-            await SendMessageAsync(session.Id, type, message);
-        });
-        return Task.WhenAll(tasks);
+            var room = roomManager.GetRoomAsync(roomId).Result ?? throw new RoomNotFoundException(roomId);
+            var tasks = room.Players.Select(async player =>
+            {
+                try
+                {
+                    var session = await GetSessionByPlayerIdAsync(player) ?? throw new PlayerNotInSessionException(player);
+                    await SendMessageAsync(session.Id, type, message);
+                }
+                catch { }
+            });
+            return Task.WhenAll(tasks);
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine(e);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SendMessageToPlayerAsync(Guid playerId, string type, string message)
+    {
+        var session = await GetSessionByPlayerIdAsync(playerId) ?? throw new PlayerNotInSessionException(playerId);
+        await SendMessageAsync(session.Id, type, message);
     }
 
     /// <inheritdoc />
@@ -115,7 +192,7 @@ public class SessionManager(IRoomManager roomManager, IPlayerManager playerManag
             Session? session = HandledSessions.FirstOrDefault(s => s.PlayerId == id);
             return Task.FromResult(session);
         }
-        catch (InvalidOperationException) // Microsoft, why?
+        catch // Microsoft, why?
         {
             return Task.FromResult<Session?>(null);
         }

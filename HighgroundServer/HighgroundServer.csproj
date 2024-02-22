@@ -18,10 +18,7 @@
     <ProjectReference Include="../HGSocketManager/HGSocketManager.csproj" />
     <ProjectReference Include="..\HGPlayers\HGPlayers.csproj" />
     <ProjectReference Include="..\HGChat\HGChat.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Networking/Rooms/" />
+    <ProjectReference Include="..\HGWorld\HGWorld.csproj" />
   </ItemGroup>
 
 </Project>
