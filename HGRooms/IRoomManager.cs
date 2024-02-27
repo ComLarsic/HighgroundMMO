@@ -1,4 +1,4 @@
-﻿namespace HighgroundRooms;
+﻿namespace HGRooms;
 
 /// <summary>
 /// The room manager.

@@ -2,7 +2,8 @@
 using System.Runtime.CompilerServices;
 using HGPhysics;
 using HGWorld.Player;
-using HighgroundRooms;
+using HGRooms;
+using HGScript;
 
 namespace HGWorld;
 
@@ -30,26 +31,48 @@ public class World
     /// The physics world for the world.
     /// This handles the physics of the game.
     /// </summary>
-    private PhyscisWorld _physicsWorld = new();
+    public PhyscisWorld PhysicsWorld = new();
 
     /// <summary>
     /// The updates since the last tick.
     /// </summary>
-    private WorldUpdates _updates = WorldUpdates.Empty;
+    public WorldUpdates Updates = WorldUpdates.Empty;
 
-    public World(Room room)
+    /// <summary>
+    /// The script manager for the world.
+    /// </summary>
+    /// <value></value>
+    public ScriptManager ScriptManager { get; } = new();
+
+    public World(Room room, string? initScript)
     {
         RoomId = room.Id;
 
-        // Add the players as entities in the world.
-        foreach (var player in room.Players)
-            SpawnPlayer(player);
+        // Add the libraries to the script manager.
+        ScriptManager.Libraries.Add("HGScript");
+        ScriptManager.Libraries.Add("HGPhysics");
+        ScriptManager.Libraries.Add("HGWorld");
+        ScriptManager.Libraries.Add("HGRooms");
+        ScriptManager.Libraries.Add("HGPlayers");
+        ScriptManager.Libraries.Add("HGChat");
+        ScriptManager.Libraries.Add("System.Numerics");
+        ScriptManager.Libraries.Add("System");
 
-        // Spawn a massive platform for the players to stand on.
-        SpawnStaticEntity(new Vector2(-10000 / 2, 500), new Vector2(10000, 100));
-        SpawnStaticEntity(new Vector2(500 / 2, 200), new Vector2(500, 48));
-        SpawnStaticEntity(new Vector2(500 / 2, 700), new Vector2(500, 48));
-        SpawnStaticEntity(new Vector2(1000 / 2, 400), new Vector2(1000, 48));
+        // Load the init script.
+        if (initScript != null)
+        {
+            var script = ScriptManager.LoadScript(initScript);
+            script.Call("Init", this);
+        }
+    }
+
+    /// <summary>
+    /// Initialize the world.
+    /// </summary>
+    public void Initialize()
+    {
+        // Initialize the scripts.
+        ScriptManager.CallMethodOnAllScripts("Init", this);
     }
 
     /// <summary>
@@ -58,7 +81,7 @@ public class World
     public Entity SpawnEntity(Entity entity)
     {
         Entities.Add(entity);
-        _updates.AddedEntities.Add(entity);
+        Updates.AddedEntities.Add(entity);
         return entity;
     }
 
@@ -69,14 +92,14 @@ public class World
     public Entity SpawnPlayer(Guid playerId)
     {
         // Create a new physics object for the player.
-        var physicsObject = _physicsWorld.AddObject(new Vector2(0, 0), PhysicsObjectType.Dynamic, new Vector2(0, 0));
+        var physicsObject = PhysicsWorld.AddObject(new Vector2(0, 0), PhysicsObjectType.Dynamic, new Vector2(0, 0));
         var collider = new BoxCollider
         {
             Position = new Vector2(0, 0),
             Size = new Vector2(96, 96),
             IsTrigger = false
         };
-        _physicsWorld.Colliders.Add(collider);
+        PhysicsWorld.Colliders.Add(collider);
 
         // Set the collider for the physics object.
         physicsObject.ColliderId = collider.Id;
@@ -91,7 +114,7 @@ public class World
             EntityData = []
         };
         Entities.Add(entity);
-        _updates.AddedEntities.Add(entity);
+        Updates.AddedEntities.Add(entity);
 
         // Add the player data to the player data list.
         var playerData = new PlayerData
@@ -107,19 +130,23 @@ public class World
     /// <summary>
     /// Spawn a static entity in the world.
     /// </summary>
-    /// <param name="position">The position of the entity.</param>
-    /// <param name="size">The size of the entity.</param>
+    /// <param name="x">The x position of the entity.</param>
+    /// <param name="y">The y position of the entity.</param>
+    /// <param name="width">The width of the entity.</param>
+    /// <param name="height">The height of the entity.</param>
     /// <returns>The entity that was spawned.</returns>
-    public Entity SpawnStaticEntity(Vector2 position, Vector2 size)
+    public Entity SpawnStaticEntity(float x, float y, float width, float height)
     {
-        var physicsObject = _physicsWorld.AddObject(position, PhysicsObjectType.Static, new Vector2(0, 0));
+        var position = new Vector2(x, y);
+        var size = new Vector2(width, height);
+        var physicsObject = PhysicsWorld.AddObject(position, PhysicsObjectType.Static, new Vector2(0, 0));
         var collider = new BoxCollider
         {
             Position = position,
             Size = size,
             IsTrigger = false
         };
-        _physicsWorld.Colliders.Add(collider);
+        PhysicsWorld.Colliders.Add(collider);
         physicsObject.ColliderId = collider.Id;
         var entity = new Entity
         {
@@ -129,9 +156,50 @@ public class World
             EntityData = []
         };
         Entities.Add(entity);
-        _updates.AddedEntities.Add(entity);
+        Updates.AddedEntities.Add(entity);
         return entity;
     }
+
+    /// <summary>
+    /// Spawn a dynamic entity in the world.
+    /// </summary>
+    /// <param name="x">The x position of the entity.</param>
+    /// <param name="y">The y position of the entity.</param>
+    /// <param name="width">The width of the entity.</param>
+    /// <param name="height">The height of the entity.</param>
+    /// <returns>The entity that was spawned.</returns>
+    public Entity SpawnDynamicEntity(float x, float y, float width, float height)
+    {
+        var position = new Vector2(x, y);
+        var size = new Vector2(width, height);
+        var physicsObject = PhysicsWorld.AddObject(position, PhysicsObjectType.Dynamic, new Vector2(0, 0));
+        var collider = new BoxCollider
+        {
+            Position = position,
+            Size = size,
+            IsTrigger = false
+        };
+        PhysicsWorld.Colliders.Add(collider);
+        physicsObject.ColliderId = collider.Id;
+        var entity = new Entity
+        {
+            Id = Guid.NewGuid(),
+            PhysicsObject = physicsObject,
+            Collider = collider,
+            EntityData = []
+        };
+        Entities.Add(entity);
+        Updates.AddedEntities.Add(entity);
+        return entity;
+    }
+
+    /// <summary>
+    /// Get an entity by id.
+    /// </summary>
+    /// <param name="entityId">The id of the entity.</param>
+    /// <returns>The entity with the id.</returns>
+    public Entity? GetEntity(Guid entityId)
+        => Entities.FirstOrDefault(e => e.Id == entityId);
 
     /// <summary>
     /// Remove an entity from the world.
@@ -143,12 +211,12 @@ public class World
         if (entity == null)
             return;
         Entities.Remove(entity);
-        _updates.RemovedEntities.Add(entityId);
+        Updates.RemovedEntities.Add(entityId);
 
         if (entity.PhysicsObject != null)
-            _physicsWorld.RemoveObject(entity.PhysicsObject);
+            PhysicsWorld.RemoveObject(entity.PhysicsObject);
         if (entity.PhysicsObject?.ColliderId != null)
-            _physicsWorld.Colliders.Remove(_physicsWorld.Colliders.First(c => c.Id == entity.PhysicsObject.ColliderId));
+            PhysicsWorld.Colliders.Remove(PhysicsWorld.Colliders.First(c => c.Id == entity.PhysicsObject.ColliderId));
     }
 
     /// <summary>
@@ -185,42 +253,6 @@ public class World
     }
 
     /// <summary>
-    /// Update the world every game tick.
-    /// Also returns the updates to the world.
-    /// </summary>
-    /// <returns>The entities that have moved.</returns>
-    public WorldUpdates Tick(double delta)
-    {
-        // Process the user input.
-        var updatedPlayers = UpdatePlayerData(Entities.Where(e => e.PlayerId != Guid.Empty).ToList(), delta);
-        _updates.UpdatedEntities.AddRange(updatedPlayers);
-
-        // Update the physics world.
-        var movedObjects = _physicsWorld.Update(delta);
-        var movedEntities = Entities.Where(e => movedObjects.Contains(e.PhysicsObject)).ToList();
-        foreach (var entity in movedEntities)
-        {
-            // Add the entity to the updates.
-            if (!_updates.UpdatedEntities.Contains(entity))
-                _updates.UpdatedEntities.Add(entity);
-        }
-
-        // Return the updates to the world.
-        _updates.DeltaTime = delta;
-        var updates = _updates;
-        // Clear the updates for the next tick.
-        // Removed entities are not cleared because they are not updated every tick.
-        // And the client might not have received the update yet.
-        _updates = new WorldUpdates
-        {
-            AddedEntities = [],
-            RemovedEntities = _updates.RemovedEntities,
-            UpdatedEntities = []
-        };
-        return updates;
-    }
-
-    /// <summary>
     /// Set the input for a player.
     /// </summary>
     /// <param name="playerId"></param>
@@ -241,80 +273,5 @@ public class World
             Jumping = jumping,
             WasJumping = playerData.Input.Jumping
         };
-    }
-
-    /// <summary>
-    /// Update the player data in the world.
-    /// </summary>
-    /// <param name="playerEntities">The player entities to update.</param>
-    /// <returns>The updated player entities.</returns>
-    public List<Entity> UpdatePlayerData(List<Entity> playerEntities, double delta)
-    {
-        var updatedEntities = new List<Entity>();
-        foreach (var entity in playerEntities)
-        {
-            // Get the player data for the player.
-            var data = entity.PlayerData;
-            if (data == null)
-                continue;
-            var wasProcessed = ProcessPlayerInput(data.Id, data.Input, delta);
-            if (wasProcessed)
-                _updates.UpdatedEntities.Add(entity);
-
-            // Update the air time of the player.
-            if (!entity.PhysicsObject.IsOnGround)
-                data.AirTime += (float)delta;
-            else
-                data.AirTime = 0;
-        }
-        return updatedEntities;
-    }
-
-    /// <summary>
-    /// Process a player's input.
-    /// </summary>
-    /// <param name="playerId">The id of the player.</param>
-    /// <param name="vector">The input vector from the player.</param>
-    /// <param name="delta">The time since the last tick.</param>
-    /// <returns>True if the input was processed, false otherwise.</returns>
-    private bool ProcessPlayerInput(Guid playerId, PlayerInput input, double delta)
-    {
-        const float jumpForce = 180f;
-        const float moveSpeed = 600f;
-        const float jumpTime = 0.05f;
-
-        // Find the entity associated with the player.
-        var entity = Entities.FirstOrDefault(e => e.PlayerId == playerId);
-        if (entity == null)
-            return false;
-
-        // Find the player data associated with the player.
-        if (entity.PlayerData == null)
-            return false;
-
-        // Apply the input to the entity.
-        var physicsObject = entity.PhysicsObject;
-        if (physicsObject == null)
-            return false;
-
-        var velocity = physicsObject.Velocity;
-        var position = physicsObject.Position;
-
-        // Apply the input to the velocity.
-        velocity.X = input.Direction.X * moveSpeed * (float)delta;
-
-        // Apply the jump.
-        if (input.Jumping && entity.PlayerData.AirTime < jumpTime)
-        {
-            // Determine the velocity of the jump by lowering the acceleration with the air time.
-            var jumpAcceleration = jumpForce * (1 - entity.PlayerData.AirTime / jumpTime);
-            velocity.Y -= jumpAcceleration * (float)delta;
-        }
-        // Apply higher gravity if the player is not jumping.
-        entity.PhysicsObject.Mass = input.Jumping ? .8f : 1f;
-
-        // Set the velocity of the physics object.
-        physicsObject.Velocity = velocity;
-        return true;
     }
 }

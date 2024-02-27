@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using HGSocketManager;
 using HGSocketManager.Exceptions;
 using HGWorld;
-using HighgroundRooms.Exceptions;
+using HGRooms.Exceptions;
 
 namespace HighgroundServer;
 

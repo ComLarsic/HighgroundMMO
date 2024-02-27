@@ -3,10 +3,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using HGPlayers;
-using HighgroundRooms;
+using HGRooms;
 using HGSocketManager;
 using HGSocketManager.Exceptions;
-using HighgroundRooms.Exceptions;
+using HGRooms.Exceptions;
 using HGWorld;
 
 namespace HighgroundServer.Messages.Rooms;

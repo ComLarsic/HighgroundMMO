@@ -2,7 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using HighgroundRooms;
+using HGRooms;
 using HGSocketManager;
 
 namespace HighgroundServer.Messages.Rooms;

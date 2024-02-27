@@ -1,7 +1,7 @@
 ﻿
-using HighgroundRooms.Exceptions;
+using HGRooms.Exceptions;
 
-namespace HighgroundRooms;
+namespace HGRooms;
 
 /// <summary>
 /// A manager for rooms in the game.

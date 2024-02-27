@@ -59,7 +59,15 @@ public class PhyscisWorld
         {
             // Only update dynamic objects.
             if (obj.Type == PhysicsObjectType.Static)
+            {
+                // If the object has a collider, update the position of the collider.
+                if (obj.ColliderId != null)
+                {
+                    var collider = Colliders.First(c => c.Id == obj.ColliderId);
+                    collider.Position = obj.Position;
+                }
                 continue;
+            }
 
             // Reset trackers
             obj.IsOnGround = false;

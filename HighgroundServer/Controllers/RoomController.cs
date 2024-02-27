@@ -1,4 +1,4 @@
-﻿using HighgroundRooms;
+﻿using HGRooms;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HighgroundServer;

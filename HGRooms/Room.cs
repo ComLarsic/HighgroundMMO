@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace HighgroundRooms;
+namespace HGRooms;
 
 /// <summary>
 /// A room in the game.

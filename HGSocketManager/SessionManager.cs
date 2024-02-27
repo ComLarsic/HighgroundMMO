@@ -6,8 +6,8 @@ using System.Text;
 using System.Text.Json;
 using HGPlayers;
 using HGSocketManager.Exceptions;
-using HighgroundRooms;
-using HighgroundRooms.Exceptions;
+using HGRooms;
+using HGRooms.Exceptions;
 
 namespace HGSocketManager;
 

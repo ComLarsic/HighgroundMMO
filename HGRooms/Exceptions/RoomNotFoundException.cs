@@ -1,4 +1,4 @@
-﻿namespace HighgroundRooms.Exceptions;
+﻿namespace HGRooms.Exceptions;
 
 /// <summary>
 /// An exception thrown when a room is not found.

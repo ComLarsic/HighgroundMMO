@@ -1,9 +1,10 @@
 using System.Reflection;
 using HGPlayers;
-using HighgroundRooms;
+using HGRooms;
 using HGSocketManager;
 using HGChat;
 using HGWorld;
+using HGScript;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();

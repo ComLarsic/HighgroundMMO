@@ -1,4 +1,4 @@
-﻿namespace HighgroundRooms;
+﻿namespace HGRooms;
 
 /// <summary>
 /// An exception thrown when a player is not in a room.

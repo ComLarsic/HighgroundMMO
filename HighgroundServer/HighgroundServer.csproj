@@ -19,6 +19,7 @@
     <ProjectReference Include="..\HGPlayers\HGPlayers.csproj" />
     <ProjectReference Include="..\HGChat\HGChat.csproj" />
     <ProjectReference Include="..\HGWorld\HGWorld.csproj" />
+    <ProjectReference Include="..\HGScript\HGScript.csproj" />
   </ItemGroup>
 
 </Project>
