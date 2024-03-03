@@ -72,7 +72,7 @@ impl Room {
     /// Add a session to the room
     pub fn add_session(&mut self, session: Uuid) -> anyhow::Result<()> {
         if self.sessions.len() >= self.capacity {
-            return Err(anyhow::anyhow!("Room is full!"));
+            return Err(anyhow::anyhow!("Room is full"));
         }
         self.sessions.push(session);
         Ok(())

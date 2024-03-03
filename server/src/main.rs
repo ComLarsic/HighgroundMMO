@@ -65,7 +65,7 @@ async fn main() -> std::io::Result<()> {
 fn setup_game_server() -> Arc<Mutex<GameServer>> {
     let mut server = GameServer::new();
     // Add rooms
-    server.room_manager.add_room(Room::new("Heck", 20));
+    server.room_manager.add_room(Room::new("Heck", 1));
     server
         .room_manager
         .add_room(Room::new("SeaOfNightmares", 20));

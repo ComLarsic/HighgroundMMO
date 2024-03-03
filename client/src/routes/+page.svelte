@@ -75,11 +75,6 @@
     }
   }
 
-  /// Handle the join event
-  async function onJoin(message: {}) {
-    isJoined = true;
-  }
-
   /// Handle the disconnect event
   function onDisconnect() {
     isConnected = false;
@@ -100,7 +95,13 @@
   SocketConnection.onError(onError);
 
   // Add the event listeners
-  SocketConnection.on("join-room-response", onJoin);
+  SocketConnection.on("join-room-response", async () => {
+    isJoined = true;
+  });
+  // Handle the join failure event
+  SocketConnection.on("join-room-fail", async (message: { reason: string }) => {
+    errorMessage = message.reason;
+  });
   SocketConnection.on(
     "get-room-list-response",
     async (message: { rooms: Array<Room> }) => {
@@ -172,7 +173,9 @@
                 <span>{room.name} </span>
               </span>
               {#if isRoomFull(room)}
-                <b>Full</b>
+                <span class="room-players">
+                  <b>Full</b>
+                </span>
               {:else}
                 <span class="room-players"
                   >{room.players.length}/{room.capacity}
