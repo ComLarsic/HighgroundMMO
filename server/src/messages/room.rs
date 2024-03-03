@@ -69,9 +69,19 @@ pub fn join_room(incoming: ClientMessageIncoming, server: Arc<Mutex<GameServer>>
 
     // Join the room
     let mut server = server.lock().unwrap();
-    let room = server.room_manager.room_mut(join_room.room).unwrap();
+    let Some(room) = server.room_manager.room_mut(join_room.room) else {
+        let response = ClientMessage::new(
+            "join-room-fail".to_string(),
+            JoinRoomFailMessage {
+                reason: "Room not found".to_string(),
+            },
+        )
+        .unwrap();
+        server.send_message(incoming.session_id, response);
+        return;
+    };
 
-    // Handle the error
+    // Handle the room being full
     if let Err(e) = room.add_session(incoming.session_id) {
         let response = ClientMessage::new(
             "join-room-fail".to_string(),
