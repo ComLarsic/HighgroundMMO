@@ -1,7 +1,6 @@
-**/bin
-**/obj
-**/appsettings.json
-**/appsettings.Development.json
 **/.svelte-kit
 **/node_modules
 **/package-lock.json
+**/config.toml
+**/target/
+**/Cargo.lock
